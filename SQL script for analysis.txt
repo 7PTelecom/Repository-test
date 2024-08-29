@@ -1,0 +1,48 @@
+1. Tries
+
+SELECT     
+    u.user,    
+    d.type,
+    DATE(d.datetime) AS 'date',
+    COUNT(*) AS 'tries',
+    COUNT(DISTINCT CASE WHEN d.status = 'ok' THEN d.id END) AS 'completed_tries',    
+    COUNT(DISTINCT d.id) AS 'loaded',
+    COUNT(DISTINCT b.user) AS 'unique_users',
+    SUM(d.duration),
+    COUNT(CASE WHEN d.promise = 'yes' THEN d.promise END) AS 'promises'   
+FROM bd_details d 
+JOIN bd_batches b ON b.id = d.b_id 
+JOIN bd_users u ON d.u_id = u.id
+WHERE d.type IN ('script_doctor_who',
+		'script_doctor_who_new')
+	AND b.date >= '2024-08-01' AND b.start_date < '2024-08-12'
+GROUP BY u.user, d.type, DATE(d.datetime);
+
+
+
+
+2. AB-test
+
+WITH q1 AS(
+SELECT     
+    u.user,    
+    d.btype,
+    DATE(d.datetime) AS 'date',
+    COUNT(CASE WHEN d.who = 'yes' THEN d.who END)/COUNT(DISTINCT CASE WHEN d.who2 = 'ok' THEN d.id END)*100 AS 'promise'
+FROM date_bbc d 
+JOIN all_bbc b ON b.id = d.id 
+JOIN users_bbc u ON d.u_id = u.id
+WHERE b.type IN ('tm_doctor_who_preapproved', 
+                'tm_doctor_who_preapproved_new')
+    AND b.date >= '2024-08-01' AND b.date < '2024-08-22'
+GROUP BY u.user, d.btype, DATE(d.datetime)
+)
+
+SELECT q1.*,
+	CASE 
+        WHEN q1.btype = 'tm_doctor_who_preapproved' THEN 'A'
+        WHEN q1.btype = 'tm_doctor_who_preapproved_new' THEN 'B'
+        ELSE 'C'
+    END AS 'group'
+FROM q1;
+
